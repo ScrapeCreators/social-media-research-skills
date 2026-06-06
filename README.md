@@ -9,7 +9,7 @@ This is not just endpoint routing. The goal is to give your AI agent complete re
 ## Install
 
 ```bash
-npx skills add ScrapeCreators/agent-skills
+npx skills add ScrapeCreators/social-research-skills
 ```
 
 Works with Claude Code, Cursor, OpenAI Codex, GitHub Copilot, Gemini CLI, Windsurf, VS Code, and other agents that support the [Agent Skills spec](https://agentskills.io).

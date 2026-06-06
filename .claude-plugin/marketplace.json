@@ -7,7 +7,7 @@
   "metadata": {
     "description": "Social media research skills for AI agents — outlier posts, transcripts, comments, competitor research, and ad library teardowns",
     "version": "1.0.0",
-    "repository": "https://github.com/ScrapeCreators/agent-skills"
+    "repository": "https://github.com/ScrapeCreators/social-research-skills"
   },
   "plugins": [
     {
