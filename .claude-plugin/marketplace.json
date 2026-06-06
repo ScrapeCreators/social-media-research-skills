@@ -1,5 +1,5 @@
 {
-  "name": "social-research-skills",
+  "name": "social-media-research-skills",
   "owner": {
     "name": "ScrapeCreators",
     "url": "https://scrapecreators.com"
@@ -7,11 +7,11 @@
   "metadata": {
     "description": "Social media research skills for AI agents — outlier posts, transcripts, comments, competitor research, and ad library teardowns",
     "version": "1.0.0",
-    "repository": "https://github.com/ScrapeCreators/social-research-skills"
+    "repository": "https://github.com/ScrapeCreators/social-media-research-skills"
   },
   "plugins": [
     {
-      "name": "social-research-skills",
+      "name": "social-media-research-skills",
       "description": "Practical social media research workflows powered by ScrapeCreators: find outlier posts, mine comments, analyze transcripts, research competitors, and tear down ad libraries.",
       "source": "./"
     }

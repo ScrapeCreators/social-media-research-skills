@@ -7,7 +7,7 @@ version: 1.0.0
 author: ScrapeCreators
 license: MIT
 homepage: https://scrapecreators.com
-repository: https://github.com/ScrapeCreators/social-research-skills
+repository: https://github.com/ScrapeCreators/social-media-research-skills
 metadata:
   openclaw:
     requires:
