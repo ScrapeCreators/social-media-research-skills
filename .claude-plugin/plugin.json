@@ -1,12 +1,12 @@
 {
-  "name": "social-research-skills",
+  "name": "social-media-research-skills",
   "description": "Social media research skills for AI agents — outlier posts, transcripts, comments, competitor research, and ad library teardowns",
   "version": "1.0.0",
   "author": {
     "name": "ScrapeCreators"
   },
   "homepage": "https://scrapecreators.com",
-  "repository": "https://github.com/ScrapeCreators/agent-skills",
+  "repository": "https://github.com/ScrapeCreators/social-media-research-skills",
   "license": "MIT",
   "skills": "./skills"
 }

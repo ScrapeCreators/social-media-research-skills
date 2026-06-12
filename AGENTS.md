@@ -1,4 +1,4 @@
-# Social Research Skills Repo
+# Social Media Research Skills Repo
 
 This repo contains agent skills for practical social media research workflows powered by ScrapeCreators.
 
