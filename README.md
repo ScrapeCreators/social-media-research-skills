@@ -4,6 +4,14 @@ Practical AI agent skills for social media research, powered by [ScrapeCreators]
 
 These skills help agents find outlier posts, mine comments, summarize transcripts, tear down competitors, analyze ad libraries, and turn public social data into useful business artifacts.
 
+## From research to publishing
+
+Use these research outputs as inputs to an approval-first publishing workflow
+with [BulkPublish](https://github.com/azeemkafridi/bulkpublish-api). Its
+[social media content skills](https://github.com/azeemkafridi/bulkpublish-api/tree/main/skills/social-media-content-skills)
+handle platform adaptation, review, scheduling, and publishing; see the
+[BulkPublish API docs](https://app.bulkpublish.com/docs) for the integration.
+
 This is not just endpoint routing. The goal is to give your AI agent complete research workflows it can run across TikTok, Instagram, YouTube, Reddit, X/Twitter, LinkedIn, Facebook, Threads, Bluesky, Pinterest, Rumble, ad libraries, and more.
 
 ## Install
