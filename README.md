@@ -30,6 +30,7 @@ Get a key at [scrapecreators.com](https://scrapecreators.com).
 |---|---|---|
 | [`outlier-post-finder`](skills/outlier-post-finder/) | Find posts, reels, shorts, tweets, or videos that beat a creator's baseline | Outlier table, repeatable patterns, hooks to steal |
 | [`transcript-intelligence`](skills/transcript-intelligence/) | Analyze video transcripts from TikTok, Instagram, YouTube, Facebook, X, LinkedIn, Rumble, or Reddit | Summary, hooks, claims, quotes, content atoms |
+| [`tiktok-transcript-content-brief`](skills/tiktok-transcript-content-brief/) | Turn a focused set of public TikTok transcripts into an auditable brief without copying creator scripts | Sources reviewed, supported patterns, original content angles, review flags |
 | [`comment-mining`](skills/comment-mining/) | Mine comments for questions, objections, pain points, product ideas, and audience language | VOC report, themes, quotes, content ideas |
 | [`competitor-social-research`](skills/competitor-social-research/) | Compare competitors' social strategy and find what is working | Competitor brief, content pillars, gaps, recommendations |
 | [`ad-library-teardown`](skills/ad-library-teardown/) | Analyze active Meta, Google, and LinkedIn ads | Messaging angles, hooks, CTAs, offers, test ideas |
