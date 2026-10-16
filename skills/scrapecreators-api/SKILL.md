@@ -239,7 +239,7 @@ Map user intent to the right endpoint. After selecting an endpoint, fetch its Op
 | Instagram basic profile | `/v1/instagram/basic/profile` | userId | `314216` |
 | Instagram embed HTML | `/v1/instagram/user/embed` | handle | `jane` |
 | Age/Gender detect | `/v1/detect/age-gender` | url (social profile) | `https://www.tiktok.com/@charlidamelio` |
-| Credit balance | `/v1/credit/balance` | (none) | |
+| Credit balance | `/v1/credit-balance` | (none) | |
 
 ## Credit Costs
 
@@ -251,7 +251,7 @@ Most endpoints cost **1 credit** per request. Exceptions:
 | `/v1/tiktok/video/transcript` | +10 credits | when `use_ai_as_fallback=true` |
 | `/v1/google/company/ads` | 25 credits | when `get_ad_details=true` |
 
-Check balance with `/v1/credit/balance`. Warn users before calling expensive endpoints.
+Check balance with `/v1/credit-balance`. Warn users before calling expensive endpoints.
 
 ## Pagination
 
