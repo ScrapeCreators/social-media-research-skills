@@ -112,7 +112,7 @@ Map user intent to the right endpoint. After selecting an endpoint, fetch its Op
 | Instagram posts | `/v2/instagram/user/posts` | handle | `jane` |
 | Instagram reels | `/v1/instagram/user/reels` | handle or user_id | `jane` or `2700692569` |
 | Instagram highlights | `/v1/instagram/user/highlights` | handle or user_id | `jane` or `2700692569` |
-| YouTube videos | `/v1/youtube/channel/videos` | handle or channelId | `ThePatMcAfeeShow` |
+| YouTube videos | `/v1/youtube/channel-videos` | handle or channelId | `ThePatMcAfeeShow` |
 | YouTube shorts | `/v1/youtube/channel/shorts` | handle or channelId | `starterstory` |
 | YouTube playlist | `/v1/youtube/playlist` | playlist_id | `PLP32wGpgzmIlInfgKVFfCwVsxgGqZNIiS` |
 | LinkedIn posts | `/v1/linkedin/company/posts` | url | `https://linkedin.com/company/shopify` |
@@ -120,7 +120,7 @@ Map user intent to the right endpoint. After selecting an endpoint, fetch its Op
 | Facebook reels | `/v1/facebook/profile/reels` | url | `https://www.facebook.com/Spurs` |
 | Facebook photos | `/v1/facebook/profile/photos` | url | `https://www.facebook.com/Spurs` |
 | Facebook group posts | `/v1/facebook/group/posts` | url or group_id | `742354120555345` |
-| Twitter tweets | `/v1/twitter/user/tweets` | handle | `elonmusk` |
+| Twitter tweets | `/v1/twitter/user-tweets` | handle | `elonmusk` |
 | Reddit posts | `/v1/reddit/subreddit` | subreddit | `AskReddit` |
 | Threads posts | `/v1/threads/user/posts` | handle | `zuck` |
 | Bluesky posts | `/v1/bluesky/user/posts` | handle or user_id | `jay.bsky.team` |
@@ -204,7 +204,6 @@ Map user intent to the right endpoint. After selecting an endpoint, fetch its Op
 | Trending feed | `/v1/tiktok/get-trending-feed` | region (required) | `US` |
 | Popular videos | `/v1/tiktok/videos/popular` | | |
 | Popular creators | `/v1/tiktok/creators/popular` | | |
-| Popular hashtags | `/v1/tiktok/hashtags/popular` | | |
 | Popular songs | `/v1/tiktok/songs/popular` | | |
 | Song details | `/v1/tiktok/song` | clipId | `7439295283975702544` |
 | Videos using song | `/v1/tiktok/song/videos` | clipId | `7439295283975702544` |
@@ -236,9 +235,9 @@ Map user intent to the right endpoint. After selecting an endpoint, fetch its Op
 | Linkbio | `/v1/linkbio` | url | `https://linkbio.co/...` |
 | Linkme | `/v1/linkme` | url | `https://linkme.bio/...` |
 | Amazon Shop | `/v1/amazon/shop` | url | `https://www.amazon.com/shop/...` |
-| Instagram basic profile | `/v1/instagram/basic/profile` | userId | `314216` |
+| Instagram basic profile | `/v1/instagram/basic-profile` | userId | `314216` |
 | Instagram embed HTML | `/v1/instagram/user/embed` | handle | `jane` |
-| Age/Gender detect | `/v1/detect/age-gender` | url (social profile) | `https://www.tiktok.com/@charlidamelio` |
+| Age/Gender detect | `/v1/detect-age-gender` | url (social profile) | `https://www.tiktok.com/@charlidamelio` |
 | Credit balance | `/v1/credit/balance` | (none) | |
 
 ## Credit Costs
