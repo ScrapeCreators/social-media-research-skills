@@ -3,7 +3,7 @@ name: competitor-social-research
 description: Use when the user wants to research competitors' social media strategy, compare brands or creators, find what content is working in a niche, identify content gaps, or produce a practical social strategy brief from public social data.
 allowed-tools: Bash, Read, Write, WebFetch
 
-version: 1.0.0
+version: 1.1.0
 author: ScrapeCreators
 license: MIT
 homepage: https://scrapecreators.com
@@ -26,6 +26,13 @@ metadata:
 ## Overview
 
 Analyze what competitors are doing on social and what appears to be working. This skill combines profile data, recent posts, outlier analysis, transcripts, and optionally comments to produce a practical competitor brief.
+
+## Before You Start
+
+- Data comes from ScrapeCreators. Load `scrapecreators-api` for endpoint details and run every call through its helper `scripts/sc.py`, which handles the balance check, cost dry-run, pagination (`--pages N`), caching and the credit budget.
+- Locate the helper with `SC="$(ls {.claude,.agents,$HOME/.claude,$HOME/.agents}/skills/scrapecreators-api/scripts/sc.py 2>/dev/null | head -1)"`, then run `python3 "$SC" balance` first. If it reports a missing key, a blocked network or no credits, tell the user what to fix and stop the data part. Never fill gaps with invented posts, numbers or quotes.
+- Cost: per competitor and platform about 1 credit for the profile plus 1 per feed page; transcripts and comments for the winners add 1 each. Above ~25 credits for the whole job, give the user the estimate in one line and wait for a yes.
+- Write the deliverable in the user's language. Keep quotes, hooks and comments verbatim in their original language.
 
 ## When to Use
 
@@ -86,6 +93,8 @@ Use the relevant profile/feed/detail/transcript/comment endpoints from `scrapecr
 - X/Twitter: `/v1/twitter/profile`, `/v1/twitter/user-tweets`
 - Threads: `/v1/threads/profile`, `/v1/threads/user/posts`
 - Bluesky: `/v1/bluesky/profile`, `/v1/bluesky/user/posts`
+- Finding the right accounts: `/v1/tiktok/search/users`, `/v1/instagram/search/profiles`, `/v1/youtube/search`, or `/v1/find-social-profiles` (10 credits) to map one known handle to the brand's other platforms
+- Paid side: hand off to `ad-library-teardown` when the user also wants the competitors' ads
 
 ## Output Format
 

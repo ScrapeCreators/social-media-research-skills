@@ -24,6 +24,13 @@ export SCRAPECREATORS_API_KEY=sk_...
 
 Get a key at [scrapecreators.com](https://scrapecreators.com).
 
+The `scrapecreators-api` skill ships a small stdlib-only helper, `skills/scrapecreators-api/scripts/sc.py`, that every workflow uses for API calls. It checks params against the endpoint catalog, follows pagination, shows the credit cost before calling (`--dry-run`), asks before any request that costs 10+ credits, keeps a per-folder credit budget (default 100, `SC_BUDGET` to change), caches identical requests for 24 hours, and saves responses to `./scrapecreators-data/` so large JSON does not flood the agent's context.
+
+```bash
+python3 skills/scrapecreators-api/scripts/sc.py balance
+python3 skills/scrapecreators-api/scripts/sc.py call /v3/tiktok/profile/videos handle=stoolpresidente --pages 3 --dry-run
+```
+
 ## Available Skills
 
 | Skill | Use it when you want to... | Output |
@@ -95,6 +102,17 @@ The workflow skills should use `scrapecreators-api` as the data layer when they 
 4. **Baseline-aware analysis** — judge performance against a creator's own normal performance, not only raw vanity metrics.
 5. **Exact language matters** — preserve useful comments, hooks, captions, and transcript quotes verbatim.
 6. **Keep outputs actionable** — end with patterns, recommendations, test ideas, or a CSV when useful.
+
+## Maintaining the endpoint catalog
+
+`skills/scrapecreators-api/references/endpoints.md` and `skills/scrapecreators-api/scripts/endpoints.json` are generated from the official [scrapecreators-cli](https://github.com/ScrapeCreators/scrapecreators-cli) `api-config/` (read as text, never executed). Regenerate instead of editing by hand:
+
+```bash
+git clone --depth 1 https://github.com/ScrapeCreators/scrapecreators-cli /tmp/sc-cli
+python3 scripts/sync-endpoints.py /tmp/sc-cli
+python3 scripts/validate-skills.py
+python3 skills/scrapecreators-api/scripts/test_sc.py
+```
 
 ## Links
 

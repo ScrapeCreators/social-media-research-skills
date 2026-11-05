@@ -3,7 +3,7 @@ name: content-repurposing
 description: Use when the user wants to turn public social videos, transcripts, posts, or creator research into reusable content assets such as LinkedIn posts, X threads, short-form scripts, newsletters, blog outlines, carousels, or content calendars.
 allowed-tools: Bash, Read, Write, WebFetch
 
-version: 1.0.0
+version: 1.1.0
 author: ScrapeCreators
 license: MIT
 homepage: https://scrapecreators.com
@@ -26,6 +26,13 @@ metadata:
 ## Overview
 
 Turn social research and transcripts into reusable content. This skill works best after `transcript-intelligence`, `outlier-post-finder`, or `creator-profile-teardown`, but it can also start directly from URLs.
+
+## Before You Start
+
+- Data comes from ScrapeCreators. Load `scrapecreators-api` for endpoint details and run every call through its helper `scripts/sc.py`, which handles the balance check, cost dry-run, pagination (`--pages N`), caching and the credit budget.
+- Locate the helper with `SC="$(ls {.claude,.agents,$HOME/.claude,$HOME/.agents}/skills/scrapecreators-api/scripts/sc.py 2>/dev/null | head -1)"`, then run `python3 "$SC" balance` first. If it reports a missing key, a blocked network or no credits, tell the user what to fix and stop the data part. Never fill gaps with invented posts, numbers or quotes.
+- Cost: usually 0 to a few credits, because this skill mostly works on material the user already has. Only fetch transcripts or posts that are missing. Above ~25 credits for the whole job, give the user the estimate in one line and wait for a yes.
+- Write the deliverable in the user's language. Keep quotes, hooks and comments verbatim in their original language.
 
 ## When to Use
 

@@ -3,7 +3,7 @@ name: outlier-post-finder
 description: Use when the user wants to find posts, videos, reels, shorts, tweets, or social content that overperformed versus a creator, brand, or competitor baseline. Finds outliers, explains why they worked, extracts hooks and formats, and produces a practical swipe file.
 allowed-tools: Bash, Read, Write, WebFetch
 
-version: 1.0.0
+version: 1.1.0
 author: ScrapeCreators
 license: MIT
 homepage: https://scrapecreators.com
@@ -28,6 +28,13 @@ metadata:
 Find social posts that beat an account's normal performance. The goal is not just to sort by views. The goal is to identify posts that performed unusually well for that creator or brand, then explain the repeatable patterns.
 
 Use ScrapeCreators as the data layer. Pull recent public posts, normalize engagement metrics, calculate each account's baseline, and produce an outlier report with source URLs and practical takeaways.
+
+## Before You Start
+
+- Data comes from ScrapeCreators. Load `scrapecreators-api` for endpoint details and run every call through its helper `scripts/sc.py`, which handles the balance check, cost dry-run, pagination (`--pages N`), caching and the credit budget.
+- Locate the helper with `SC="$(ls {.claude,.agents,$HOME/.claude,$HOME/.agents}/skills/scrapecreators-api/scripts/sc.py 2>/dev/null | head -1)"`, then run `python3 "$SC" balance` first. If it reports a missing key, a blocked network or no credits, tell the user what to fix and stop the data part. Never fill gaps with invented posts, numbers or quotes.
+- Cost: 1 credit per feed page (20 to 50 posts is usually 1 to 3 pages per account) plus 1 per enrichment call. Above ~25 credits for the whole job, give the user the estimate in one line and wait for a yes.
+- Write the deliverable in the user's language. Keep quotes, hooks and comments verbatim in their original language.
 
 ## When to Use
 
@@ -70,7 +77,7 @@ Before calling an endpoint, fetch its docs or per-endpoint OpenAPI spec if param
 
 2. **Fetch recent posts**
    - Pull at least 20 posts when available. More is better for baseline confidence.
-   - Paginate if the endpoint supports cursors and the user wants a larger window.
+   - Paginate with the helper (`--pages N`) when the user wants a larger window. Run `--dry-run` first when several accounts are involved.
    - Keep source URLs for citations.
 
 3. **Normalize metrics**

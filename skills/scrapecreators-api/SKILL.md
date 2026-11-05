@@ -1,15 +1,17 @@
 ---
 name: scrapecreators-api
 description: >-
-  Scrape and extract public data from 27+ social media platforms using the
-  ScrapeCreators REST API. Covers TikTok, Instagram, YouTube, LinkedIn,
-  Facebook, Twitter/X, Reddit, Threads, Bluesky, Pinterest, Snapchat, Twitch,
-  Kick, Truth Social, TikTok Shop, Google, and link-in-bio services (Linktree,
-  Komi, Pillar, Linkbio, Linkme, Amazon Shop). Use when the user asks to
-  scrape, fetch, extract, search, or look up social media profiles, posts,
-  videos, reels, comments, transcripts, followers, ads, hashtags, trending
-  content, or engagement metrics from any social platform. Also use when user
-  mentions ScrapeCreators, social media API, ad library, or creator data.
+  Scrape and extract public data from 25+ platforms using the ScrapeCreators
+  REST API: TikTok, TikTok Shop, Instagram, YouTube, LinkedIn, Facebook
+  (incl. Marketplace and events), Twitter/X, Reddit, Threads, Bluesky,
+  Pinterest, Snapchat, Twitch, Kick, Rumble, Truth Social, Spotify, Apple
+  Music, SoundCloud, GitHub, Kwai, Telegram, Google, Amazon Shop and
+  link-in-bio services. Use when the user asks to scrape, fetch, extract,
+  search, or look up social media profiles, posts, videos, reels, comments,
+  transcripts, followers, ads, hashtags, trending content, or engagement
+  metrics from any social platform. Also use when the user mentions
+  ScrapeCreators, a social media API, an ad library, or creator data, and as
+  the data layer for the other social research skills.
 allowed-tools: Bash, Read, Write, WebFetch
 homepage: https://scrapecreators.com
 metadata:
@@ -46,246 +48,258 @@ metadata:
 
 # ScrapeCreators API
 
-Scrape and extract public data from 27+ social media platforms. 110 endpoints available.
+Public data from 25+ platforms through 189 GET endpoints. Base URL `https://api.scrapecreators.com`, auth header `x-api-key`. Every call spends credits, so this skill is built around one rule: **know the cost before you call, and never invent data when a call fails.**
 
-**Base URL:** `https://api.scrapecreators.com`
+Full endpoint list with required params, pagination and credits: [references/endpoints.md](references/endpoints.md) (generated from the official ScrapeCreators CLI config, v1.0.108, 2026-11-04).
 
-Get your API key at https://scrapecreators.com
+## Step 0: Find the helper and check access
 
-## How to Call
+Use the bundled helper instead of raw curl. It validates params, follows pagination, enforces a credit budget, caches identical requests, refuses to follow redirects (so the key never leaks), and saves responses to files so large JSON never floods the conversation.
 
-All endpoints use GET requests. Pass query params in the URL and authenticate with the `x-api-key` header. Responses are JSON.
+The helper sits in `scripts/sc.py` inside this skill's base directory (shown when the skill loads). If you do not know that path:
 
 ```bash
-curl -s "https://api.scrapecreators.com/v1/tiktok/profile?handle=charlidamelio" \
-  -H "x-api-key: $SCRAPECREATORS_API_KEY"
+SC="$(ls {.claude,.agents,$HOME/.claude,$HOME/.agents}/skills/scrapecreators-api/scripts/sc.py 2>/dev/null | head -1)"
+python3 "$SC" balance
 ```
 
-Or with `fetch`:
+`balance` is free. Read its result before anything else:
 
-```javascript
-const res = await fetch(
-  "https://api.scrapecreators.com/v1/tiktok/profile?handle=charlidamelio",
-  { headers: { "x-api-key": process.env.SCRAPECREATORS_API_KEY } }
-);
-const data = await res.json();
+| Result | What to tell the user |
+|---|---|
+| `"ok": true, "creditCount": N` | Ready. Mention the balance if the job is large. |
+| `missing_api_key` (exit 2) | They need a key from https://app.scrapecreators.com set as `SCRAPECREATORS_API_KEY`. In a Claude Code cloud session it goes into the environment settings, then a new session. Never ask them to paste the key in chat. |
+| `network_blocked` (exit 4) | The environment's network policy blocks `api.scrapecreators.com`. They must allow that host in the network settings. |
+| `http_401` | Key rejected. |
+| `http_402` | Out of credits, top up at https://app.scrapecreators.com/billing. |
+
+If access fails, stop the data part of the task and explain. Do not fall back to made-up numbers, remembered stats, or "example" data presented as real.
+
+## Step 1: Pick the endpoint
+
+Use the routing tables below. For anything not listed, search the bundled list:
+
+```bash
+python3 "$SC" find instagram comments
 ```
 
-Endpoint paths use the pattern `/v1/platform/action`. The tables below list each endpoint path and its required params.
+If a call returns 400 or a parameter is unclear, fetch the per-endpoint OpenAPI spec: `https://docs.scrapecreators.com/{path}/openapi.json` (for example `https://docs.scrapecreators.com/v1/tiktok/profile/openapi.json`).
 
-### API Spec
+## Step 2: Plan the cost
 
-Each endpoint has its own OpenAPI spec at `https://docs.scrapecreators.com/{path}/openapi.json`.
+```bash
+python3 "$SC" call /v3/tiktok/profile/videos handle=stoolpresidente --pages 5 --dry-run
+```
 
-For example: https://docs.scrapecreators.com/v1/tiktok/profile/openapi.json
+`--dry-run` calls nothing and prints `credits_per_request` and `estimated_max_credits`. Then:
 
-**Important:** Once you've determined which endpoint(s) to call from the routing tables below, fetch the single-endpoint OpenAPI spec first to get the full parameter details, types, and example response before making the actual API call.
+* Up to ~25 credits for the whole task: just run it.
+* More than that: tell the user the estimate in one line and get a yes.
+* The helper refuses any single request of 10+ credits (`needs_confirmation`, exit 3) until you add `--allow-expensive`. Only add it after the user agreed to that cost.
+* The helper stops at a budget of 100 credits per output directory (`over_budget`). Raise it with `SC_BUDGET=...` only when the user asks.
 
-The full spec covering all endpoints is at https://docs.scrapecreators.com/openapi.json (large file — prefer the per-endpoint specs above).
+## Step 3: Call
+
+```bash
+python3 "$SC" call /v1/tiktok/profile handle=charlidamelio
+python3 "$SC" call /v3/tiktok/profile/videos handle=charlidamelio --pages 3
+python3 "$SC" call /v1/youtube/video/transcript url="https://www.youtube.com/watch?v=bjVIDXPP7Uk"
+```
+
+Output is a short JSON summary: `files` (saved pages), `items`, `items_key`, `next_cursor`, `credits_charged`, `credits_remaining`, `top_level_keys`. Read the saved files with `jq` or a short Python snippet and pull only the fields you need. A leading `@` in `handle` and `#` in `hashtag` is stripped for you.
+
+Responses go to `./scrapecreators-data/` (override with `SC_OUT`). Identical requests within 24 h are served from cache for 0 credits (`--no-cache` to force a fresh call). `python3 "$SC" spent` shows credits spent so far.
+
+Raw HTTP is fine when the helper is not available:
+
+```bash
+curl -s "https://api.scrapecreators.com/v1/tiktok/profile?handle=charlidamelio" -H "x-api-key: $SCRAPECREATORS_API_KEY"
+```
 
 ## Intent Routing
 
-Map user intent to the right endpoint. After selecting an endpoint, fetch its OpenAPI spec at `https://docs.scrapecreators.com/{path}/openapi.json` for full param details before calling.
+### Profiles
+| Platform | Endpoint | Main param |
+|---|---|---|
+| TikTok | `/v1/tiktok/profile` | `handle` or `user_id` |
+| TikTok region | `/v1/tiktok/profile/region` | `handle` |
+| Instagram | `/v1/instagram/profile` | `handle` |
+| Instagram by user id | `/v1/instagram/basic-profile` | `userId` |
+| YouTube | `/v1/youtube/channel` | `handle`, `channelId` or `url` |
+| LinkedIn person / company | `/v1/linkedin/profile`, `/v1/linkedin/company` | `url` |
+| Facebook | `/v1/facebook/profile` | `url` |
+| Twitter/X | `/v1/twitter/profile` | `handle` |
+| Reddit subreddit | `/v1/reddit/subreddit/details` | `subreddit` or `url` |
+| Threads / Bluesky / Truth Social | `/v1/threads/profile`, `/v1/bluesky/profile`, `/v1/truthsocial/profile` | `handle` |
+| Twitch / Snapchat / Kwai | `/v1/twitch/profile`, `/v1/snapchat/profile`, `/v1/kwai/profile` | `handle` |
+| Pinterest boards | `/v1/pinterest/user/boards` | `handle` |
+| Telegram channel | `/v1/telegram/channel` | see spec |
+| Linked socials of a creator | `/v1/find-social-profiles` (10 credits) | `platform` + `handle` |
 
-### Profiles / User Info
-| Platform | Endpoint | Primary Param | Example |
-|----------|----------|---------------|---------|
-| TikTok | `/v1/tiktok/profile` | handle | `stoolpresidente` |
-| Instagram | `/v1/instagram/profile` | handle | `jane` |
-| YouTube | `/v1/youtube/channel` | handle, channelId, or url | `ThePatMcAfeeShow` |
-| LinkedIn (person) | `/v1/linkedin/profile` | url | `https://www.linkedin.com/in/parrsam/` |
-| LinkedIn (company) | `/v1/linkedin/company` | url | `https://linkedin.com/company/shopify` |
-| Facebook | `/v1/facebook/profile` | url | `https://www.facebook.com/mantraindianfolsom` |
-| Twitter/X | `/v1/twitter/profile` | handle | `elonmusk` |
-| Reddit | `/v1/reddit/subreddit/details` | subreddit or url | `AskReddit` |
-| Threads | `/v1/threads/profile` | handle | `zuck` |
-| Bluesky | `/v1/bluesky/profile` | handle | `jay.bsky.team` |
-| Pinterest | `/v1/pinterest/user/boards` | handle | `pinterest` |
-| Truth Social | `/v1/truthsocial/profile` | handle | `realDonaldTrump` |
-| Twitch | `/v1/twitch/profile` | handle | `ninja` |
-| Snapchat | `/v1/snapchat/profile` | handle | `djkhaled` |
+### Posts and feeds
+| Platform | Endpoint | Main param | Paging |
+|---|---|---|---|
+| TikTok videos | `/v3/tiktok/profile/videos` | `handle` | `max_cursor` |
+| Instagram posts | `/v2/instagram/user/posts` | `handle` | `next_max_id` |
+| Instagram reels | `/v1/instagram/user/reels` | `handle` or `user_id` | `max_id` |
+| Instagram tagged posts | `/v1/instagram/user/tagged-posts` | `user_id` | `cursor` |
+| YouTube videos | `/v1/youtube/channel-videos` | `handle` or `channelId` | `continuationToken` |
+| YouTube shorts / lives / playlists | `/v1/youtube/channel/shorts`, `/v1/youtube/channel/lives`, `/v1/youtube/channel/playlists` | `handle` or `channelId` | `continuationToken` |
+| YouTube community posts | `/v1/youtube/channel/community-posts` | `handle` or `channelId` | `continuationToken` |
+| LinkedIn company posts | `/v1/linkedin/company/posts` | `url` | `page` (max 7) |
+| Facebook posts / reels / photos | `/v1/facebook/profile/posts`, `/v1/facebook/profile/reels`, `/v1/facebook/profile/photos` | `url` or `pageId` | `cursor` |
+| Facebook group posts | `/v1/facebook/group/posts` | `url` or `group_id` | `cursor` |
+| Twitter/X | `/v1/twitter/user-tweets` | `handle` | none (~100 popular tweets) |
+| Reddit subreddit posts | `/v1/reddit/subreddit` | `subreddit` (case-sensitive) | `after` |
+| Threads / Bluesky / Truth Social | `/v1/threads/user/posts`, `/v1/bluesky/user/posts`, `/v1/truthsocial/user/posts` | `handle` | Bluesky `cursor`, Truth `next_max_id` |
+| Rumble / Twitch / Kwai | `/v1/rumble/channel/videos`, `/v1/twitch/user/videos`, `/v1/kwai/user/posts` | `handle` or `url` (Twitch: `handle`) | Rumble, Kwai `cursor` |
+| Telegram | `/v1/telegram/channel/posts` | `handle` | `cursor` |
 
-### Posts / Content Feeds
-| Platform | Endpoint | Primary Param | Example |
-|----------|----------|---------------|---------|
-| TikTok videos | `/v3/tiktok/profile/videos` | handle | `stoolpresidente` |
-| Instagram posts | `/v2/instagram/user/posts` | handle | `jane` |
-| Instagram reels | `/v1/instagram/user/reels` | handle or user_id | `jane` or `2700692569` |
-| Instagram highlights | `/v1/instagram/user/highlights` | handle or user_id | `jane` or `2700692569` |
-| YouTube videos | `/v1/youtube/channel/videos` | handle or channelId | `ThePatMcAfeeShow` |
-| YouTube shorts | `/v1/youtube/channel/shorts` | handle or channelId | `starterstory` |
-| YouTube playlist | `/v1/youtube/playlist` | playlist_id | `PLP32wGpgzmIlInfgKVFfCwVsxgGqZNIiS` |
-| LinkedIn posts | `/v1/linkedin/company/posts` | url | `https://linkedin.com/company/shopify` |
-| Facebook posts | `/v1/facebook/profile/posts` | url or pageId | `https://www.facebook.com/pacemorby` |
-| Facebook reels | `/v1/facebook/profile/reels` | url | `https://www.facebook.com/Spurs` |
-| Facebook photos | `/v1/facebook/profile/photos` | url | `https://www.facebook.com/Spurs` |
-| Facebook group posts | `/v1/facebook/group/posts` | url or group_id | `742354120555345` |
-| Twitter tweets | `/v1/twitter/user/tweets` | handle | `elonmusk` |
-| Reddit posts | `/v1/reddit/subreddit` | subreddit | `AskReddit` |
-| Threads posts | `/v1/threads/user/posts` | handle | `zuck` |
-| Bluesky posts | `/v1/bluesky/user/posts` | handle or user_id | `jay.bsky.team` |
-| Truth Social posts | `/v1/truthsocial/user/posts` | handle or user_id | `realDonaldTrump` |
-| Pinterest board | `/v1/pinterest/board` | url | `https://www.pinterest.com/...` |
+### Single post or video
+| Platform | Endpoint |
+|---|---|
+| TikTok | `/v2/tiktok/video` (`url`, add `get_transcript=true` for transcript) |
+| Instagram | `/v1/instagram/post` |
+| YouTube video / community post | `/v1/youtube/video`, `/v1/youtube/community-post` |
+| YouTube sponsors in a video | `/v1/youtube/video/sponsors` |
+| LinkedIn | `/v1/linkedin/post` |
+| Facebook | `/v1/facebook/post` |
+| Twitter/X tweet / community | `/v1/twitter/tweet`, `/v1/twitter/community`, `/v1/twitter/community/tweets` |
+| Reddit post | `/v1/reddit/post` (comments: `/v1/reddit/post/comments`) |
+| Threads / Bluesky / Truth Social | `/v1/threads/post`, `/v1/bluesky/post`, `/v1/truthsocial/post` |
+| Pinterest pin / board | `/v1/pinterest/pin`, `/v1/pinterest/board` |
+| Twitch / Kick clip | `/v1/twitch/clip`, `/v1/kick/clip` |
+| Rumble / Snapchat Spotlight / Kwai / Telegram | `/v1/rumble/video`, `/v1/snapchat/spotlight`, `/v1/kwai/post`, `/v1/telegram/post` |
 
-### Single Post / Video Details
-| Platform | Endpoint | Primary Param | Example |
-|----------|----------|---------------|---------|
-| TikTok | `/v2/tiktok/video` | url | `https://www.tiktok.com/@randomspamvideos25/video/7251387037834595630` |
-| Instagram | `/v1/instagram/post` | url | `https://www.instagram.com/reel/DOq6eV6iIgD` |
-| Instagram highlight | `/v1/instagram/user/highlight/detail` | id | `18067016518767507` |
-| YouTube | `/v1/youtube/video` | url | `https://www.youtube.com/watch?v=Y2Ah_DFr8cw` |
-| YouTube community post | `/v1/youtube/community-post` | url | `https://www.youtube.com/post/Ugkxvj2KoApYAXoqLWnKVr6zZe5JjeHrQeP8` |
-| LinkedIn | `/v1/linkedin/post` | url | `https://www.linkedin.com/pulse/being-father-has-made-me-better-leader...` |
-| Facebook | `/v1/facebook/post` | url | `https://www.facebook.com/reel/1535656380759655` |
-| Twitter/X | `/v1/twitter/tweet` | url | `https://twitter.com/elonmusk/status/...` |
-| Twitter/X community | `/v1/twitter/community` | url | `https://twitter.com/i/communities/...` |
-| Twitter/X community tweets | `/v1/twitter/community/tweets` | url | `https://twitter.com/i/communities/...` |
-| Reddit | `/v1/reddit/post/comments` | url | `https://www.reddit.com/r/AskReddit/comments/...` |
-| Threads | `/v1/threads/post` | url | `https://www.threads.net/@zuck/post/...` |
-| Bluesky | `/v1/bluesky/post` | url | `https://bsky.app/profile/.../post/...` |
-| Truth Social | `/v1/truthsocial/post` | url | `https://truthsocial.com/@realDonaldTrump/posts/...` |
-| Pinterest | `/v1/pinterest/pin` | url | `https://www.pinterest.com/pin/...` |
-| Twitch clip | `/v1/twitch/clip` | url | `https://clips.twitch.tv/...` |
-| Kick clip | `/v1/kick/clip` | url | `https://kick.com/...` |
+All take `url` unless the spec says otherwise.
 
 ### Comments
-| Platform | Endpoint | Primary Param | Example |
-|----------|----------|---------------|---------|
-| TikTok | `/v1/tiktok/video/comments` | url | `https://www.tiktok.com/@stoolpresidente/video/7499229683859426602` |
-| Instagram | `/v2/instagram/post/comments` | url | `https://www.instagram.com/reel/DOq6eV6iIgD` |
-| YouTube | `/v1/youtube/video/comments` | url | `https://www.youtube.com/watch?v=dQw4w9WgXcQ` |
-| Facebook | `/v1/facebook/post/comments` | url or feedback_id | `https://www.facebook.com/reel/753347914167361` |
-| Reddit | `/v1/reddit/post/comments` | url | `https://www.reddit.com/r/AskReddit/comments/...` |
+| Platform | Comments | Replies |
+|---|---|---|
+| TikTok | `/v1/tiktok/video/comments` (0 credits for empty pages) | `/v1/tiktok/video/comment/replies` |
+| Instagram | `/v2/instagram/post/comments` | `/v1/instagram/post/comment/replies` |
+| YouTube | `/v1/youtube/video/comments` | `/v1/youtube/video/comment/replies` |
+| Facebook | `/v1/facebook/post/comments` | `/v1/facebook/post/comment/replies` |
+| Reddit | `/v1/reddit/post/comments` | in the same response |
+| Rumble / Snapchat | `/v1/rumble/video/comments`, `/v1/snapchat/spotlight/comments` | |
 
 ### Transcripts
-| Platform | Endpoint | Example | Note |
-|----------|----------|---------|------|
-| TikTok | `/v1/tiktok/video/transcript` | `url=https://www.tiktok.com/...&lang=en` | also via `/v2/tiktok/video` with get_transcript=true |
-| Instagram | `/v2/instagram/media/transcript` | `url=https://www.instagram.com/reel/...` | AI-powered, 10-30s, under 2min |
-| YouTube | `/v1/youtube/video/transcript` | `url=https://www.youtube.com/watch?v=bjVIDXPP7Uk` | also included in `/v1/youtube/video` response |
-| Facebook | `/v1/facebook/post/transcript` | `url=https://www.facebook.com/reel/...` | under 2min only |
-| Twitter/X | `/v1/twitter/tweet/transcript` | `url=https://twitter.com/...` | AI-powered, slow |
+| Platform | Endpoint | Notes |
+|---|---|---|
+| YouTube | `/v1/youtube/video/transcript` | public captions only, any length, 1 credit if returned, 0 if none, `language` param |
+| TikTok | `/v1/tiktok/video/transcript` | native captions; `use_ai_as_fallback=true` for AI; param is `language`, not `lang` |
+| Instagram | `/v2/instagram/media/transcript` | AI, carousels supported |
+| Facebook / Facebook ad | `/v1/facebook/post/transcript`, `/v1/facebook/adLibrary/ad/transcript` | native first, then AI |
+| Twitter/X | `/v1/twitter/tweet/transcript` | AI, slow |
+| LinkedIn / Reddit / Rumble | `/v1/linkedin/post/transcript`, `/v1/reddit/post/transcript`, `/v1/rumble/video/transcript` | |
+| Twitch / Kick clip | `/v1/twitch/clip/transcript`, `/v1/kick/clip/transcript` | |
+
+AI transcription is 1 credit for videos up to 2 minutes. Longer videos need `allow_long_transcription=true`, which bills **10 credits per started minute for every successful AI transcript, short ones included**. Empty results cost 0. AI routes are synchronous and can take 30+ seconds.
 
 ### Search
-| Platform | Endpoint | Primary Param | Example |
-|----------|----------|---------------|---------|
-| TikTok users | `/v1/tiktok/search/users` | query | `funny` |
-| TikTok videos (keyword) | `/v1/tiktok/search/keyword` | query | `funny` |
-| TikTok videos (hashtag) | `/v1/tiktok/search/hashtag` | hashtag | `fyp` |
-| TikTok top (photos+videos) | `/v1/tiktok/search/top` | query | `funny` |
-| Instagram reels | `/v2/instagram/reels/search` | query | `dogs` |
-| YouTube | `/v1/youtube/search` | query | `funny` |
-| YouTube hashtag | `/v1/youtube/search/hashtag` | hashtag | `funny` |
-| Reddit (all) | `/v1/reddit/search` | query | `best programming languages` |
-| Reddit (in subreddit) | `/v1/reddit/subreddit/search` | subreddit + query | `AskReddit` + `funny` |
-| Threads posts | `/v1/threads/search` | query | `AI` |
-| Threads users | `/v1/threads/search/users` | query | `zuck` |
-| Pinterest | `/v1/pinterest/search` | query | `home decor` |
-| Google | `/v1/google/search` | query | `best restaurants in NYC` |
+| What | Endpoint | Main param |
+|---|---|---|
+| TikTok videos / top / hashtag / users | `/v1/tiktok/search/keyword`, `/v1/tiktok/search/top`, `/v1/tiktok/search/hashtag`, `/v1/tiktok/search/users` | `query` / `hashtag` |
+| TikTok autocomplete | `/v1/tiktok/search/suggestions` | `query` |
+| Instagram reels / profiles / hashtag / popular | `/v2/instagram/reels/search`, `/v1/instagram/search/profiles`, `/v1/instagram/search/hashtag`, `/v1/instagram/search/popular` | `query` (hashtag route: `hashtag`) |
+| Instagram reels using a sound | `/v1/instagram/audio/reels` | `audio_id` |
+| YouTube / hashtag / autocomplete | `/v1/youtube/search`, `/v1/youtube/search/hashtag`, `/v1/youtube/search/typeahead` | `query` / `hashtag` |
+| Twitter/X posts | `/v1/twitter/search/posts` | `query` (Google-indexed, incomplete, cursor 1 to 11) |
+| LinkedIn posts | `/v1/linkedin/search/posts` | `query` (Google-indexed, cursor 1 to 11) |
+| Facebook videos / events / Marketplace | `/v1/facebook/search/videos`, `/v1/facebook/events/search`, `/v1/facebook/marketplace/search` | `query` |
+| Reddit all / in subreddit | `/v1/reddit/search`, `/v1/reddit/subreddit/search` | `query` (+ `subreddit`) |
+| Threads posts / users | `/v1/threads/search`, `/v1/threads/search/users` | `query` |
+| Pinterest / Rumble / Google | `/v1/pinterest/search`, `/v1/rumble/search`, `/v1/google/search` | `query` |
+| Spotify / Apple Music | `/v1/spotify/search`, `/v1/apple-music/search` | `query` |
 
-### Ad Libraries
-| Platform | Endpoint | Primary Param | Example |
-|----------|----------|---------------|---------|
-| Facebook ads search | `/v1/facebook/adLibrary/search/ads` | query | `running` |
-| Facebook company ads | `/v1/facebook/adLibrary/company/ads` | pageId or companyName | `Lululemon` |
-| Facebook ad detail | `/v1/facebook/adLibrary/ad` | id or url | `702369045530963` |
-| Facebook find companies | `/v1/facebook/adLibrary/search/companies` | query | `Nike` |
-| Google company ads | `/v1/google/company/ads` | domain or advertiser_id | `nike.com` |
-| Google ad detail | `/v1/google/ad` | url | `https://adstransparency.google.com/...` |
-| Google find advertisers | `/v1/google/adLibrary/advertisers/search` | query | `Nike` |
-| LinkedIn ads search | `/v1/linkedin/ads/search` | company or keyword | `Shopify` |
-| LinkedIn ad detail | `/v1/linkedin/ad` | url | `https://www.linkedin.com/ad/...` |
-| Reddit ads search | `/v1/reddit/ads/search` | query | `gaming` |
-| Reddit ad detail | `/v1/reddit/ad` | id | `t3_abc123` |
+### Ad libraries
+| Platform | Endpoint | Main param |
+|---|---|---|
+| Meta search ads / find companies | `/v1/facebook/adLibrary/search/ads`, `/v1/facebook/adLibrary/search/companies` | `query` |
+| Meta ads of a company / one ad | `/v1/facebook/adLibrary/company/ads`, `/v1/facebook/adLibrary/ad` | `pageId` or `companyName` / `id` or `url` |
+| Google ads of a company | `/v1/google/company/ads` | `domain` or `advertiser_id` (25 credits with `get_ad_details=true`) |
+| Google one ad / find advertiser | `/v1/google/ad`, `/v1/google/adLibrary/advertisers/search` | `url` / `query` |
+| LinkedIn ads search / one ad | `/v1/linkedin/ads/search`, `/v1/linkedin/ad` | `company` or `keyword` / `url` |
+| TikTok ads search / one ad | `/v1/tiktok/ad-library/search`, `/v1/tiktok/ad-library/ad` | `query` or `advertiser_name` / `ad_id` |
 
-### Trending / Popular
-| Content | Endpoint | Param | Example |
-|---------|----------|-------|---------|
-| Trending feed | `/v1/tiktok/get-trending-feed` | region (required) | `US` |
-| Popular videos | `/v1/tiktok/videos/popular` | | |
-| Popular creators | `/v1/tiktok/creators/popular` | | |
-| Popular hashtags | `/v1/tiktok/hashtags/popular` | | |
-| Popular songs | `/v1/tiktok/songs/popular` | | |
-| Song details | `/v1/tiktok/song` | clipId | `7439295283975702544` |
-| Videos using song | `/v1/tiktok/song/videos` | clipId | `7439295283975702544` |
-| Trending shorts (YT) | `/v1/youtube/shorts/trending` | | |
+There is no Reddit ad library endpoint.
 
-### Followers / Following / Live (TikTok only)
-| Type | Endpoint | Example |
-|------|----------|---------|
-| Following | `/v1/tiktok/user/following` | `handle=stoolpresidente` |
-| Followers | `/v1/tiktok/user/followers` | `handle=stoolpresidente` |
-| Audience demographics | `/v1/tiktok/user/audience` (26 credits!) | `handle=shakira` |
-| Live stream | `/v1/tiktok/user/live` | `handle=thejustalex` |
+### Trending and discovery
+| What | Endpoint | Param |
+|---|---|---|
+| TikTok trending feed | `/v1/tiktok/get-trending-feed` | `region` (required) |
+| TikTok popular hashtags | `/v1/tiktok/hashtags/popular` | `period`, `countryCode`, `industry`, `page` |
+| TikTok sound / videos using it | `/v1/tiktok/song`, `/v1/tiktok/song/videos` | `clipId` |
+| Instagram trending reels | `/v1/instagram/reels/trending` | none |
+| YouTube trending shorts | `/v1/youtube/shorts/trending` | |
+| Pinterest topic | `/v1/pinterest/topic` | `url` |
+| GitHub trending repos / developers | `/v1/github/trending/repositories`, `/v1/github/trending/developers` | `language`, `since` |
 
-### TikTok Shop
-| Type | Endpoint | Primary Param | Example |
-|------|----------|---------------|---------|
-| Search products | `/v1/tiktok/shop/search` | query | `shoes` |
-| Store products | `/v1/tiktok/shop/products` | url | `https://www.tiktok.com/shop/store/goli-nutrition/7495794203056835079` |
-| Product detail | `/v1/tiktok/product` | url | `https://www.tiktok.com/shop/pdp/goli-ashwagandha-gummies.../1729587769570529799` |
-| Product reviews | `/v1/tiktok/shop/product/reviews` | url or product_id | `1731578642912612516` |
-| User showcase | `/v1/tiktok/user/showcase` | handle | `mrtiktokreviews` |
+TikTok popular videos, creators and songs endpoints no longer exist. For those signals combine the trending feed, popular hashtags, `search/top` and `song/videos`.
 
-### Link-in-Bio / Other
-| Service | Endpoint | Param | Example |
-|---------|----------|-------|---------|
-| Linktree | `/v1/linktree` | url | `https://linktr.ee/...` |
-| Komi | `/v1/komi` | url | `https://komi.io/...` |
-| Pillar | `/v1/pillar` | url | `https://pillar.io/...` |
-| Linkbio | `/v1/linkbio` | url | `https://linkbio.co/...` |
-| Linkme | `/v1/linkme` | url | `https://linkme.bio/...` |
-| Amazon Shop | `/v1/amazon/shop` | url | `https://www.amazon.com/shop/...` |
-| Instagram basic profile | `/v1/instagram/basic/profile` | userId | `314216` |
-| Instagram embed HTML | `/v1/instagram/user/embed` | handle | `jane` |
-| Age/Gender detect | `/v1/detect/age-gender` | url (social profile) | `https://www.tiktok.com/@charlidamelio` |
-| Credit balance | `/v1/credit/balance` | (none) | |
+`/v1/tiktok/hashtags/popular` is still in the official CLI catalog, but some users reported 404s for it. If it returns 404, fall back to `/v1/tiktok/search/hashtag` and hashtags seen in the trending feed.
 
-## Credit Costs
+### Audience, creators and commerce
+| What | Endpoint | Cost |
+|---|---|---|
+| TikTok followers / following | `/v1/tiktok/user/followers`, `/v1/tiktok/user/following` | 1 per page, `min_time` paging |
+| TikTok audience countries | `/v1/tiktok/user/audience` | **26** |
+| Age and gender estimate from photo | `/v1/detect-age-gender` | 1, AI estimate |
+| Public creator emails | `/v1/find-creator-emails` | 1 if none, **10** if any found |
+| TikTok live / user live | `/v1/tiktok/live`, `/v1/tiktok/user/live` | 1 |
+| TikTok Shop search / store / product / reviews / showcase | `/v1/tiktok/shop/search`, `/v1/tiktok/shop/products`, `/v1/tiktok/product`, `/v1/tiktok/shop/product/reviews`, `/v1/tiktok/user/showcase` | 1 |
+| Link in bio | `/v1/linktree`, `/v1/komi`, `/v1/pillar`, `/v1/linkbio`, `/v1/linkme`, `/v1/amazon/shop` | 1 |
+| Account usage | `/v1/account/credit-balance`, `/v1/account/get-api-usage`, `/v1/account/get-daily-usage-count`, `/v1/account/get-most-used-routes` | free |
 
-Most endpoints cost **1 credit** per request. Exceptions:
+## Credit costs
 
-| Endpoint | Cost | Condition |
-|----------|------|-----------|
-| `/v1/tiktok/user/audience` | 26 credits | always |
-| `/v1/tiktok/video/transcript` | +10 credits | when `use_ai_as_fallback=true` |
-| `/v1/google/company/ads` | 25 credits | when `get_ad_details=true` |
+Default is 1 credit per successful request (per page). Known exceptions:
 
-Check balance with `/v1/credit/balance`. Warn users before calling expensive endpoints.
+| Endpoint or flag | Cost |
+|---|---|
+| `/v1/tiktok/user/audience` | 26 |
+| `/v1/google/company/ads` with `get_ad_details=true` | 25 |
+| `/v1/find-social-profiles` | 10 |
+| `/v1/find-creator-emails` | 10 with emails, 1 without |
+| `allow_long_transcription=true` on any AI transcript route | 10 per started minute |
+| Transcript routes with no transcript, TikTok comment pages with no comments | 0 |
+
+Responses usually include `credits_charged` and `credits_remaining`; the helper reports both.
 
 ## Pagination
 
-Paginated endpoints return a cursor/token in the response. Pass it back as a query param to get the next page.
+Pass the cursor from the previous response back as the same-named param. The helper does this with `--pages N` and stops when the cursor is missing, repeats, or `has_more` is false.
 
-| Cursor Field | Used By |
-|-------------|---------|
-| `cursor` | TikTok comments/search/song videos, Instagram comments, Reddit subreddit search, Pinterest, Bluesky, Facebook reels/photos/posts/comments, TikTok Shop products/user showcase |
-| `max_cursor` | TikTok profile videos |
-| `min_time` | TikTok following/followers |
-| `continuationToken` | YouTube (all paginated endpoints) |
-| `after` | Reddit posts, Reddit search |
+| Paging param | Used by |
+|---|---|
+| `cursor` | most comment, search, Facebook, Bluesky, Pinterest, TikTok song/hashtag/users, TikTok Shop products routes |
+| `max_cursor` | TikTok profile videos (and TikTok collection videos, sent back as `cursor`) |
+| `min_time` | TikTok followers and following |
+| `continuationToken` | YouTube |
+| `after` | Reddit subreddit posts and search |
 | `next_max_id` | Instagram posts, Truth Social posts |
 | `max_id` | Instagram reels |
-| `page` | TikTok popular/shop, Instagram reels search, LinkedIn company posts, TikTok Shop reviews |
-| `paginationToken` | LinkedIn ads |
+| `paginationToken` | LinkedIn ads search |
+| `page` (counter) | LinkedIn company posts, Google search, Instagram reels search, TikTok popular hashtags, TikTok Shop search and reviews |
 
-## Common Optional Params
+## Common optional params
 
-- **`trim`** (boolean): reduces response payload size. Use when you only need key metrics.
-- **`region`** (string): 2-letter country code for proxy location. Does NOT filter by region -- just routes the request through that country's proxy.
+* `trim=true` shrinks the payload on endpoints that support it. Use it when you only need metrics.
+* `region` (2-letter code) routes the request through a proxy in that country. It does **not** filter results, except where the spec says so (for example the TikTok trending feed).
 
-## Known Limitations
+## Known limitations
 
-- **Handles**: pass without the `@` symbol. Use `charlidamelio` not `@charlidamelio`. Applies to TikTok, Instagram, Twitter, Threads, Bluesky, Snapchat, Twitch, Pinterest, Truth Social
-- **YouTube handles**: pass without the `@` symbol. Use `ThePatMcAfeeShow` not `@ThePatMcAfeeShow`. You can also pass a channelId (e.g. `UC-9-kyTW8ZkZNDHQJ6FgpwQ`) or full URL instead
-- **Hashtags**: pass without the `#` symbol. Use `fyp` not `#fyp`. Applies to TikTok and YouTube hashtag search endpoints
-- **Twitter**: returns ~100 most popular tweets, not chronological/latest
-- **Threads**: only last 20-30 posts visible publicly
-- **Facebook posts**: only 3 posts per page (API limitation)
-- **Facebook group posts**: only 3 posts per page (same API limitation)
-- **LinkedIn company posts**: max 7 pages
-- **Instagram play counts**: IG-only views (excludes cross-posted FB views)
-- **Truth Social**: only prominent users (Trump, Vance, etc.) work publicly
-- **Instagram song reels**: deprecated (endpoint exists but non-functional)
-- **Transcripts**: all transcript endpoints require video under 2 minutes
-- **Reddit subreddit names**: case-sensitive! Use "AskReddit" not "askreddit"
+* Handles go without `@`, hashtags without `#` (the helper strips them).
+* Reddit subreddit names are case-sensitive: `AskReddit`, not `askreddit`.
+* Twitter/X profiles expose only ~100 of the most popular tweets, not the latest. For recent posts on a topic use `/v1/twitter/search/posts`, which is Google-indexed and incomplete.
+* Threads shows only the last 20 to 30 posts publicly.
+* Facebook profile and group posts come 3 per page.
+* LinkedIn company posts stop at 7 pages. LinkedIn and X post search stop at cursor 11.
+* Instagram play counts are Instagram-only views.
+* Truth Social works for prominent public accounts only.
+* TikTok profile videos can miss posts even after full pagination.
+* Public data only. Private accounts, logged-in views and DMs are out of scope.
+
+## Updating this skill
+
+`references/endpoints.md` and `scripts/endpoints.json` are generated from `api-config/` in the official `ScrapeCreators/scrapecreators-cli` repo by `scripts/sync-endpoints.py` at the root of the `ScrapeCreators/social-media-research-skills` repo. When the API changes, rerun that script rather than editing rows by hand. Run `python3 scripts/test_sc.py` in this skill after changing the helper.
