@@ -106,7 +106,7 @@ python3 "$SC" call /v3/tiktok/profile/videos handle=charlidamelio --pages 3
 python3 "$SC" call /v1/youtube/video/transcript url="https://www.youtube.com/watch?v=bjVIDXPP7Uk"
 ```
 
-Output is a short JSON summary: `files` (saved pages), `items`, `items_key`, `next_cursor`, `credits_charged`, `credits_remaining`, `top_level_keys`. Read the saved files with `jq` or a short Python snippet and pull only the fields you need. A leading `@` in `handle` and `#` in `hashtag` is stripped for you.
+Output is a short JSON summary: `files` (saved pages), `items`, `items_key`, `next_cursor`, `credits_charged`, `credits_remaining`, `top_level_keys`. Always check `complete`: when it is `false`, `stopped_early` says which page failed and why, and `resume_with` gives the cursor to continue from. Tell the user the data is partial instead of presenting it as the full set. A response with `success: false` is reported as the error `api_success_false`. You can also pass a full URL with a query string (`/v1/tiktok/profile?handle=x`). Read the saved files with `jq` or a short Python snippet and pull only the fields you need. A leading `@` in `handle` and `#` in `hashtag` is stripped for you.
 
 Responses go to `./scrapecreators-data/` (override with `SC_OUT`). Identical requests within 24 h are served from cache for 0 credits (`--no-cache` to force a fresh call). `python3 "$SC" spent` shows credits spent so far.
 

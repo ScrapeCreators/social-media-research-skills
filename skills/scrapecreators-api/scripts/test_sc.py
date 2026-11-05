@@ -52,6 +52,13 @@ class FakeAPI(BaseHTTPRequestHandler):
                 STATE["yt_429_left"] -= 1
                 return self.send_json(429, {"message": "slow down"})
             return self.send_json(200, {"name": "ok"})
+        if u.path == "/v1/reddit/subreddit":
+            after = q.get("after")
+            if after == "boom":
+                return self.send_json(500, {"message": "upstream exploded"})
+            return self.send_json(200, {"posts": [{"id": 1}], "after": "t2" if after is None else "boom"})
+        if u.path == "/v1/twitter/profile":
+            return self.send_json(200, {"success": False, "message": "User not found"})
         if u.path == "/v1/reddit/search":
             return self.send_json(402, {"message": "Out of credits"})
         if u.path == "/v1/threads/profile":
@@ -174,6 +181,31 @@ class ScTests(unittest.TestCase):
         self.assertEqual((code, out["creditCount"]), (0, 500))
         code, out = self.run_sc("find", "tiktok", "transcript")
         self.assertIn("/v1/tiktok/video/transcript", [e["path"] for e in out["endpoints"]])
+
+    def test_error_mid_pagination_is_reported(self):
+        code, out = self.run_sc("call", "/v1/reddit/subreddit", "subreddit=AskReddit", "--pages", "5")
+        self.assertEqual(code, 0)
+        self.assertFalse(out["complete"])
+        self.assertEqual(out["stopped_early"]["error"], "http_500")
+        self.assertEqual(out["stopped_early"]["resume_with"], {"after": "boom"})
+        self.assertEqual(out["pages_fetched"], 2)
+
+    def test_success_false_is_an_error(self):
+        code, out = self.run_sc("call", "/v1/twitter/profile", "handle=ghost")
+        self.assertEqual((code, out["error"]), (1, "api_success_false"))
+        self.assertIn("not found", out["message"])
+
+    def test_different_params_do_not_overwrite_files(self):
+        _, a = self.run_sc("call", "/v1/tiktok/profile", "handle=a")
+        _, b = self.run_sc("call", "/v1/tiktok/profile", "handle=a", "user_id=5")
+        self.assertNotEqual(a["files"][0], b["files"][0])
+        self.assertTrue(pathlib.Path(a["files"][0]).exists() and pathlib.Path(b["files"][0]).exists())
+
+    def test_query_string_in_path(self):
+        code, out = self.run_sc("call", "https://api.scrapecreators.com/v1/tiktok/profile?handle=@qs")
+        self.assertEqual(code, 0)
+        self.assertEqual(STATE["calls"][0][1]["handle"], "qs")
+        self.assertTrue(out["complete"])
 
     def test_non_https_base_rejected(self):
         code, out = self.run_sc("balance", SCRAPECREATORS_BASE_URL="http://example.com")

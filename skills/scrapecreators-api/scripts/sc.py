@@ -297,8 +297,11 @@ def parse_params(pairs):
 
 def cmd_call(args):
     eps = load_endpoints()
-    path = "/" + args.path.strip().lstrip("/")
+    raw_path = args.path.strip()
+    raw_path, _, query = raw_path.partition("?")
+    path = "/" + raw_path.lstrip("/")
     path = re.sub(r"^/?(https?://)?api\.scrapecreators\.com", "", path) or path
+    query_pairs = [f"{k}={v}" for k, v in urllib.parse.parse_qsl(query, keep_blank_values=True)]
     meta = eps.get(path)
     if meta is None and not args.force:
         close = difflib.get_close_matches(path, list(eps), n=5, cutoff=0.6)
@@ -306,7 +309,7 @@ def cmd_call(args):
              did_you_mean=close, hint="Use 'sc.py find <words>' or pass --force if the API added it recently.")
     meta = meta or {"required": [], "optional": [], "credits": "1", "page_param": None, "page_field": None,
                     "params_known": False}
-    params = parse_params(args.params)
+    params = parse_params(query_pairs + list(args.params))
 
     missing = [r for r in meta.get("required", []) if r not in params]
     if missing and meta.get("params_known", True):
@@ -340,7 +343,7 @@ def cmd_call(args):
     timeout = float(os.environ.get("SC_TIMEOUT", "120"))
     ttl = float(os.environ.get("SC_CACHE_TTL_HOURS", "24")) * 3600
     files, total_items, charged_total, remaining = [], 0, 0.0, None
-    item_key, next_value, cached_pages, last_ok = None, None, 0, {}
+    item_key, next_value, cached_pages, last_ok, stopped = None, None, 0, {}, None
     cur = dict(params)
     if page_param == "page" and "page" not in cur:
         cur["page"] = "1"
@@ -360,7 +363,9 @@ def cmd_call(args):
                 data = {"raw": body[:2000].decode("utf-8", "replace")}
             if status != 200:
                 msg, hint = explain_status(status, data)
-                if files:  # keep what we already have
+                if files:  # keep what we already have, but say so loudly
+                    stopped = {"page": i + 1, "error": f"http_{status}", "message": msg or hint,
+                               "resume_with": {page_param: cur.get(page_param)} if page_param else None}
                     break
                 fail(f"http_{status}", msg or hint, 1, hint=hint, path=path)
             charged = data.get("credits_charged") if isinstance(data, dict) else None
@@ -372,13 +377,19 @@ def cmd_call(args):
         charged_total += charged
         last_ok = data
 
-        f = d / f"{slug(path, params)}__p{i + 1}.json"
+        qid = hashlib.sha256(json.dumps([path, sorted(params.items())]).encode()).hexdigest()[:8]
+        f = d / f"{slug(path, params)}__{qid}__p{i + 1}.json"
         f.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
         files.append(str(f))
         k, n = find_items(data)
         item_key = item_key or k
         total_items += n
         if isinstance(data, dict) and data.get("success") is False:
+            if i == 0:
+                fail("api_success_false", str(data.get("message") or data.get("error") or
+                     "API returned success: false"), 1, path=path, files=files)
+            stopped = {"page": i + 1, "error": "api_success_false",
+                       "message": str(data.get("message") or data.get("error") or "")}
             break
 
         if i + 1 >= pages or not page_param:
@@ -402,6 +413,8 @@ def cmd_call(args):
     sample = last_ok if isinstance(last_ok, dict) else {}
     emit({
         "ok": True,
+        "complete": stopped is None,
+        "stopped_early": stopped,
         "path": path,
         "files": files,
         "pages_fetched": len(files),
